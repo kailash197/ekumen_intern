@@ -1,5 +1,39 @@
 # Considerations
 
+Discussion:
+- drivers report information to ``/joint_states`` topic which gives 
+    - name of joints
+    - position
+    - velocites
+    - effort
+    - timestamp
+- Handling time stamps and synchronization for odometry computation in a mobile robot:  
+    - Encoder data from left and right wheels, which may arrive at different time stamps.
+    -  Ideally, the driver should provide all wheel states with a single time stamp, representing the acquisition time. If perfect synchronization is not possible, the driver should use a common time base and estimate missing values using interpolation (linear, cubic, etc.) or averaging from previous samples.
+    - The odometry output should use the controller’s acquisition time stamp (sample time), not the time when the algorithm publishes the data. This ensures the odometry reflects the robot’s actual position at the time of measurement, even if computation and transport introduce delays.
+
+        Key Principle: Always propagate the original acquisition time stamp through the system for accuracy.
+
+- Odometry Based on Deltas:  
+    Odometry integrates velocity deltas over time to compute position.
+    Requires maintaining a previous state (last sample) to compute the next delta.
+
+- Initial State Options:
+    - Option 1:  
+        Use a predefined initial pose from configuration (e.g., X, Y, θ from a YAML file or constants).
+    - Option 2:  
+        Start at origin (0,0,0) and compute deltas from there. For the first sample, you cannot compute a delta because there’s no previous state. So:
+        - Store the first sample as the reference.
+        - Begin computation from the second sample onward.
+
+- Configuration Source:
+    Configurations come from:
+    - ROS parameters or YAML files.
+    - Static constants in code (if not using ROS).  
+    These values are based on mechanical drawings and calibration routines (e.g., wheel radius, encoder counts).  
+    Calibration ensures accuracy (left/right wheel radius may differ slightly).
+
+
 ## Scope of Design
 - What does my design need to cover? 
 - Which is the scope?
@@ -7,17 +41,40 @@
 - Which are the inputs of the system?
 ---
 
-- Design should cover generalized IK based driving algorithms like differential drive  algorithm. Various drives to be considered are:
+- Design should cover generalized kinematic configurations for following:
     1. Differential drive
     2. Ackermann drive
     3. Omnidirectional drive
     4. Swerve drive
-- Input and Output
+- Inputs
+    - info from `/joint_states`
+    - kinematic configuration as ROS2 parameters or config.yaml
+        - radius of wheel
+        - baseline or wheel seperation
+        - specific case of generic configs like ackermann (tricycle, FWD, RWD) etc.
     - Twist (linear and angular robot velocities)
-    - Wheel odometry
+- Outputs
+    - synchronous processing of info from /joint_states
+    - latency/jitter from input to be considered if computation is slower
+    - Wheel odometry to `/odom`
+        - pose (position and orientation quaternion), twist and covariance of `base_link` in `odom` frame
+        - timestamp
+        - there are multiple
+        - covariance analysis
+            - out of the scope for this project
+            - usually analysed on data from whole experiement rosbag
+            - take as input parameter and plug into output
+            - all non-prinpical diagonal values are zero
+            -
+    - Transform between frames `odom -> base_link` to `/tf`
+        - pose info: position + orientation
+        - timestamp
+        - computationally expensive so can be published in low freq
+        - not isolated hence may be need to update whole sub-tree 
+        - not recommended or optional output
 ---
 ## Block Diagram
-![System Diagram](./WheelOdom.svg)
+![System Diagram](./wheel_odom.png)
 
 ---
 
@@ -34,29 +91,29 @@ The overall design is asynchronous and distributed by virtue of ROS2. There may 
 
 #### <u> Non-ROS Components:</u>
 The design of non-ROS components are asynchronous in nature.
-1. **IK implementation**
+1. **FK implementation**
     - converts required robot linear and angular velocity into wheel velocities which are input to motor control hardware.
 2. **Wheel Odometry**
     - includes implementation of **pose exponential** for pose estimation
-3. **FK implementation** <font color='red'>is this required?</font>
 
 #### <u> ROS components</u>:
 There may be synchronous components like service calls.
-1. Kinematic Topic Publisher/Subscriber node:
-    - Asynchronous
-    - reads twist from `\cmd_vel` topic
-    - call back **IK implementation**
-    - publishes wheel velocities to topic which motor driver listens to
-2. Odometry Publisher Node:
-    - Asynchronous
-    - read wheel ticks from encoder (is it from some topic??)
-    - call **pose exponential**
+1. Kinematic Topic Subscriber node:
+    - Synchronous callback
+    - reads from `\joint_states` topic
+    - Publisher inside same callback
+    - Synchronous callback
     - publish odometry to `\odom` topic
+2. TF is optional
+    - need different callback/ thread
+    - can be implemented using timer
+    - adjust frequency
 
 #### <u> Statefulness of Algorithms </u>
 1. **Pose estimation** is inherently stateful as the algorithm tries to determine the robot's position and orientation over time by using past states, as 
 $$pose_t​=pose_{t−1}​+\Delta pose$$
-2. **Inverse kinematics (IK)** and **Forward kinematics (FK)** equations are generally stateless unless numerical iterative methods (which use intermediate states) are employed to achieve solution.
+2. keep track of previous `/joint_states`
+3. **Inverse kinematics (IK)** and **Forward kinematics (FK)** equations are generally stateless unless numerical iterative methods (which use intermediate states) are employed to achieve solution.
 
 
     In a ROS node, the state is maintained by storing current pose, velocity, cov, etc as class member variables.
@@ -77,6 +134,9 @@ $$pose_t​=pose_{t−1}​+\Delta pose$$
 3. **ROS Unit Testing**
     - To test whether ROS interfaces are communicating or connected as expected
     - might need to check in insolation as well
+4. **Integration Testing**
+    - on sim platform like gazebo
+    - or using rosbag data
 
 ---
 ## Dependencies
@@ -98,7 +158,14 @@ Following are dependencies:
     - No manual implementation:
         - Eigen3 is faster, safer and future-proof.
         - Save extra effort on developing and testing own math library.
-2. ROS ??
+2. ROS
+    - `rclcpp`
+    - `ament`
+
+3. Testing
+    - `GTest`
+    - `GMock`
+
 ***
 
 ## Bottlenecks
@@ -107,3 +174,5 @@ Following are dependencies:
 
 - Which is the complexity of the algorithm? Time and memory.
 ---
+- benchmark the algorithm 
+- comparative analysis against other available wheeel odom algorithms/packages
