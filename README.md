@@ -19,7 +19,9 @@ sudo apt update && rosdep install --from-paths src --ignore-src -y
 ```bash
 docker exec -it $(docker ps -aq | head -1) bash
 source install/setup.bash
-#OR
+```
+OR
+```bash
 docker exec -it $(docker ps -aq | head -1) bash -c "source install/setup.bash; /usr/bin/bash"
 ```
 
@@ -102,45 +104,25 @@ This package contains the mathematics library and its tests.
 
 ### Build and Run tests
 ```bash
-sudo apt update && rosdep install --from-paths src/odometry_estimator --ignore-src -y
+sudo apt update && rosdep install --from-paths src/odometry_estimator* --ignore-src -y
 colcon build --packages-select odometry_estimator --event-handlers console_direct+ && source install/setup.bash
 colcon test  --packages-select odometry_estimator --event-handlers console_direct+
 colcon test-result --verbose
+```
+
+```bash
+clear && colcon build --packages-up-to odometry_estimator_test --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --event-handlers console_direct+ && source install/setup.bash
+clear &&  colcon test  --packages-up-to odometry_estimator_test --event-handlers console_direct+
+``
+```bash
+ros2 run odometry_estimator_test test_usage
 ```
 #### Auto format for clang issues
 ```bash
 ament_clang_format --config src/.clang-format --reformat src/odometry_estimator
 ```
-## Package: `odometry_helper_test`
-A simple package to test the usage of `odometry_helper` package with ROS2 pipeline.
-
-### Build and Run tests
 ```bash
-sudo apt update && rosdep install --from-paths src/odometry_helper* --ignore-src -y
-colcon build --packages-up-to odometry_helper_test --event-handlers console_direct+ && source install/setup.bash
-colcon test --packages-up-to odometry_helper_test --event-handlers console_direct+
-colcon test-result --verbose
-```
-#### Run the test usage node
-```bash
-#Terminal 1
-ros2 run odometry_helper_test test_usage_node
-```
-
-In another terminal,
-```bash
-#Terminal 2
-docker exec -it $(docker ps -aq | head -1) bash -c "source install/setup.bash; /usr/bin/bash"
-```
-```bash
-# Send conversion value to the topic
-ros2 topic pub /test_input std_msgs/msg/Float32 '{data: -40.0}' --once
-```
-
-### Build and Run tests
-```bash
-sudo apt update && rosdep install --from-paths src/odometry_core --ignore-src -y
-colcon build --packages-up-to odometry_core --event-handlers console_direct+ && source install/setup.bash
+ament_clang_tidy --config src/.clang-tidy --fix-errors ./build/odometry_estimator
 ```
 
 
