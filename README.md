@@ -105,6 +105,8 @@ This package contains the mathematics library and its tests.
 ### Build and Run tests
 ```bash
 sudo apt update && rosdep install --from-paths src/odometry_estimator* --ignore-src -y
+```
+```bash
 colcon build --packages-select odometry_estimator --event-handlers console_direct+ && source install/setup.bash
 colcon test  --packages-select odometry_estimator --event-handlers console_direct+
 colcon test-result --verbose
