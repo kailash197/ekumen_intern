@@ -113,7 +113,7 @@ colcon test-result --verbose
 ```bash
 clear && colcon build --packages-up-to odometry_estimator_test --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --event-handlers console_direct+ && source install/setup.bash
 clear &&  colcon test  --packages-up-to odometry_estimator_test --event-handlers console_direct+
-``
+```
 ```bash
 ros2 run odometry_estimator_test test_usage
 ```
