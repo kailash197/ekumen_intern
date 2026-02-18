@@ -34,7 +34,7 @@ class Odometry {
   + start_timer_if_needed() void
 }
 
-class OdometryCore {
+class OdometryEstimator {
   - kin_conf : KinematicConfig
   - prev_state : RobotState
   - current_state : RobotState
@@ -43,7 +43,7 @@ class OdometryCore {
   - compute_robot_pose_delta(kin_conf, displacements: WheelDisplacements, prev_state) Pose2D
   - pose_exponential(kin_conf, robot_pose_delta: Pose2D) Pose2D
   - compute_normalized_pose(global_delta_pose: Pose2D, prev_state) Pose2D
-  - integrate_pose(u: Twist2D, dt: double) void
+
   - normalize_heading(theta: double) double
   - theta_to_quaternion(theta: double) Quaternion
 }
@@ -54,8 +54,7 @@ class WheelDisplacements {
 
 
 class Pose2D {
-    + x: double
-    + y: double
+    + coordinates: vector<double>
     + theta: double
 }
 
