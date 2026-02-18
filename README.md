@@ -113,12 +113,34 @@ colcon test-result --verbose
 ```
 
 ```bash
+ros2 run odometry_estimator_test test_usage
+```
+
+#### Ament clang tidy setup
+Add in CMakeLists.txt
+```cmake
+  find_package(ament_cmake_clang_tidy REQUIRED)
+  set(CLANG_TIDY_CONFIG_PATH "${CMAKE_SOURCE_DIR}/../.clang-tidy" CACHE STRING "Choose the path to the clang tidy configuration file")
+  if(EXISTS ${CLANG_TIDY_CONFIG_PATH})
+    message(STATUS ".clang-tidy found")
+    set(AMENT_CLANG_TIDY_CONFIG_FILE "${CLANG_TIDY_CONFIG_PATH}")
+  else()
+    message(WARNING ".clang-tidy not found at ${CLANG_TIDY_CONFIG_PATH}")
+  endif()
+```
+in `package.xml`
+```xml
+ <test_depend>ament_cmake_clang_tidy</test_depend>
+```
+#### Build and run tests
+```bash
 clear && colcon build --packages-up-to odometry_estimator_test --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --event-handlers console_direct+ && source install/setup.bash
 clear &&  colcon test  --packages-up-to odometry_estimator_test --event-handlers console_direct+
 ```
 ```bash
 ros2 run odometry_estimator_test test_usage
 ```
+
 #### Auto format for clang issues
 ```bash
 ament_clang_format --config src/.clang-format --reformat src/odometry_estimator
@@ -126,7 +148,6 @@ ament_clang_format --config src/.clang-format --reformat src/odometry_estimator
 ```bash
 ament_clang_tidy --config src/.clang-tidy --fix-errors ./build/odometry_estimator
 ```
-
 
 
 ## Inspection and monitoring commands
